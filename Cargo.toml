@@ -1,0 +1,3 @@
+[workspace]
+members = ["viking-cli", "viking-io", "viking-protocol"]
+resolver = "2"
