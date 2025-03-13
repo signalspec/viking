@@ -5,12 +5,12 @@ macro_rules! flags {
         }
     ) => {
         #[repr(transparent)]
-        #[derive(Copy, Clone, PartialEq, Eq, AsBytes, FromBytes, Unaligned, FromZeroes)]
+        #[derive(Copy, Clone, PartialEq, Eq, IntoBytes, FromBytes, Unaligned)]
         $vis struct $name([u8; ::core::mem::size_of::<$int>()]);
 
         impl $name {
             $(
-                $(#[$meta])* $vis const $flag: Self = Self((1 as $int << ($bit as u32)).to_le_bytes());
+                $(#[$meta])* $vis const $flag: Self = Self(((1 as $int) << ($bit as u32)).to_le_bytes());
             )*
 
             $vis const EMPTY: Self = Self([0; ::core::mem::size_of::<$int>()]);

@@ -2,8 +2,9 @@
 pub mod protocol;
 pub mod request;
 
-mod field;
 mod flags;
 
-pub use field::ConstU16;
-pub use zerocopy::AsBytes;
+pub use zerocopy::little_endian::{U16, U32};
+pub use zerocopy::IntoBytes;
+
+pub mod descriptor;
