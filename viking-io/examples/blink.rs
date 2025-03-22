@@ -1,20 +1,17 @@
 use std::error::Error;
 
-use futures_lite::future::block_on;
-use viking_io::{Interface, gpio::Gpio};
+use viking_io::{Interface, led::Led};
 
-fn main() {
-    env_logger::init();
-    block_on(inner()).unwrap()
-}
-
-async fn inner() -> Result<(), Box<dyn Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     let dev = Interface::find(0x59e3, 0x2222).await?;
 
-    let led = dev.resource("pb30")?.as_mode::<Gpio>()?.enable().await?;
+    let led = dev.resource("led")?.as_mode::<Led>()?.enable().await?;
 
     loop {
-        led.write(false).await?;
-        led.write(true).await?;
+        led.off().await?;
+        tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+        led.on().await?;
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     }
 }

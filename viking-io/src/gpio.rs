@@ -49,4 +49,12 @@ impl Gpio {
     pub async fn write(&self, level: bool) -> Result<(), RequestError> {
         self.resource.interface.run(self.cmd_write(level)).await
     }
+
+    pub async fn high(&self) -> Result<(), RequestError> {
+        self.resource.interface.run(self.cmd_write(true)).await
+    }
+
+    pub async fn low(&self) -> Result<(), RequestError> {
+        self.resource.interface.run(self.cmd_write(false)).await
+    }
 }

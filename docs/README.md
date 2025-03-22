@@ -122,6 +122,7 @@ id     | name
 -------|-----
 0x0110 | [Digital Input Output Pin](./GPIO.md)
 0x0120 | [Level Interrupt](./Level_Interrupt.md)
+0x0130 | [Indicator LED](./LED.md)
 0x0200 | [SPI Controller](./SPI.md)
 0x0210 | SPI CLK Pin
 0x0211 | SPI SDO Pin
