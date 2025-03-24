@@ -1,6 +1,11 @@
 use core::str;
 use std::iter;
+
+use zerocopy::{FromZeros, IntoBytes};
+
+use viking_protocol::descriptor::VikingDescriptor;
 pub struct Resources {
+    viking: VikingDescriptor,
     resources: Vec<Resource>,
 }
 
@@ -18,13 +23,18 @@ pub struct Mode {
 impl Resources {
     pub fn parse(bytes: &[u8]) -> Result<Self, ()> {
         use viking_protocol::descriptor::*;
+        let mut viking = VikingDescriptor::new_zeroed();
         let mut resources = vec![];
 
         for i in descriptors(bytes) {
             let (kind, body) = i?;
 
             match kind {
-                DESCRIPTOR_TYPE_VIKING => {}
+                DESCRIPTOR_TYPE_VIKING => {
+                    let dest = viking.as_mut_bytes();
+                    let len = body.len().min(dest.len());
+                    dest[..len].copy_from_slice(&body[..len]);
+                }
                 DESCRIPTOR_TYPE_RESOURCE => {
                     resources.push(Resource {
                         name: "".into(),
@@ -62,11 +72,15 @@ impl Resources {
             }
         }
 
+        if viking.version != 0x01 {
+            return Err(());
+        }
+
         if resources.len() > 63 {
             return Err(());
         }
 
-        Ok(Resources { resources })
+        Ok(Resources { viking, resources })
     }
 
     pub fn resources(&self) -> impl Iterator<Item = (u8, &Resource)> {
@@ -79,6 +93,22 @@ impl Resources {
 
     pub fn resource(&self, id: u8) -> Option<&Resource> {
         self.resources.get(id as usize - 1)
+    }
+
+    pub fn version(&self) -> u8 {
+        self.viking.version
+    }
+
+    pub fn max_cmd_len(&self) -> u32 {
+        self.viking.max_cmd.get()
+    }
+
+    pub fn max_res_len(&self) -> u32 {
+        self.viking.max_res.get()
+    }
+
+    pub fn max_evt_len(&self) -> u32 {
+        self.viking.max_evt.get()
     }
 }
 

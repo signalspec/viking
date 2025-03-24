@@ -11,7 +11,13 @@ fn main() {
 
 fn info(intf: &viking_io::Interface) -> Result<(), io::Error> {
     let mut w = io::stdout().lock();
-    for (_, resource) in intf.descriptor().resources() {
+    let desc = intf.descriptor();
+
+    writeln!(w, "Version {}", desc.version())?;
+    writeln!(w, "  Commands up to {} bytes", desc.max_cmd_len())?;
+    writeln!(w, "  Response up to {} bytes", desc.max_res_len())?;
+
+    for (_, resource) in desc.resources() {
         writeln!(w, "{}", resource.name())?;
         for (_, mode) in resource.modes() {
             writeln!(w, "  {} {:04X}", mode.name().unwrap_or(""), mode.protocol())?;

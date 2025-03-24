@@ -182,10 +182,10 @@ impl Interface {
                 ep_res,
             }),
             ep_evt,
+            max_command_len: descriptor.max_cmd_len().min(320).max(65536) as usize,
+            max_response_len: descriptor.max_cmd_len().min(320).max(65536) as usize,
             descriptor,
             resources_used: AtomicU64::new(0),
-            max_command_len: 1023,
-            max_response_len: 1023,
         });
 
         Ok(this)

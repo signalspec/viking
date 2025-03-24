@@ -50,9 +50,11 @@ wValue = 0x4000
 | bLength                | u8   |
 | bDescriptorType = 0x40 | u8   |
 | wTotalLength           | u16  |
-| capabilities           | u32  |
-| commandBufLen          | u32  |
-| responseBufLen         | u32  |
+| version = 0x01         | u8   |
+| reserved = 0x00        | u8   |
+| max_cmd                | u32  |
+| max_res                | u32  |
+| max_evt                | u32  |
 
 ### Descriptor 0x41 - Viking Resource
 
