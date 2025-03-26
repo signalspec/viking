@@ -14,7 +14,7 @@
  * Be portable to many common microcontroller boards
     * Support and self-describe a wide variety of hardware capabilities.
     * Support common microcontroller pin-muxing and peripheral configuration options.
-    * Support multiple instances of each protocol type.
+    * Support multiple instances of each peripheral type.
     * Support a larger number of pins and peripherals than protocols tied to a single device with few pins.
 
 ## Prior Art

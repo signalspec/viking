@@ -2,13 +2,15 @@
 
 GPIO pin for digital IO and bitbanging.
 
-## Capabilities Descriptor
+## Descriptor information
 
 None
 
 ## Configuration
 
 None
+
+TODO: pull up/down, drive strength
 
 ## Commands
 

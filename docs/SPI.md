@@ -1,6 +1,8 @@
 # SPI Controller (0x0200)
 
-[Serial Peripheral Interface](https://en.wikipedia.org/wiki/Serial_Peripheral_Interface). This protocol controls the SCK, SDO, and SDI pins of a SPI bus only. Use a GPIO pin for chip select.
+[Serial Peripheral Interface](https://en.wikipedia.org/wiki/Serial_Peripheral_Interface).
+
+This protocol controls the SCK, SDO, and SDI pins of a SPI bus only. Use a GPIO pin for chip select.
 
 ## Capabilities Descriptor
 
@@ -8,9 +10,6 @@ Field       | Type | Description
 ------------|------|-------------
 flags       | u32  | see below
 base_clock  | u32  | base clock in Hz
-min_div     | u32  | minimum divisor for base_clock
-max_div     | u32  | maximum divisor for base_clock
-max_div_pow | u8   | maximum power of 2 divisor for base clock
 
 
 Flag bit | Name        | Description
@@ -29,10 +28,7 @@ Flag bit | Name        | Description
 Field         | Type | Description
 --------------|------|-------------
 flags         | u32  | See below. Specified values must be supported in capability flags.
-clock_div     | u32  | base clock in Hz, must be between `min_div` and `max_div`
-clock_div_pow | u8   | 2^n divisor for base_clock, must be <= `max_div_pow`
-
-The requested clock frequency is `base_clock / 2^clock_div_pow / clock_div`.
+speed         | u32  | Desired speed in Hz. May be rounded down by the firmware.
 
 Flag bit  | Name        | Description
 ----------|-------------|-------------
@@ -41,10 +37,10 @@ Flag bit  | Name        | Description
 
 ## Commands
 
-### 0: TRANSFER
+### 3: TRANSFER
 
 ```
-<cmd> <so> -> <si>
+<cmd> <len> <so>*len -> <si>*len
 ```
 
 Shift out `<so>` on SDO while shifting in `<si>` from SDI.

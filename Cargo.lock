@@ -404,6 +404,7 @@ dependencies = [
 [[package]]
 name = "nusb"
 version = "0.2.0-beta"
+source = "git+https://github.com/kevinmehall/nusb.git?rev=a9ef4ca1ae9d18546011768eaf72a1ec9b208ea7#a9ef4ca1ae9d18546011768eaf72a1ec9b208ea7"
 dependencies = [
  "atomic-waker",
  "blocking",

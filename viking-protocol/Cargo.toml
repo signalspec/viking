@@ -1,7 +1,9 @@
 [package]
 name = "viking-protocol"
 version = "0.1.0"
-edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/signalspec/viking"
+edition = "2024"
 
 [dependencies]
 bitflags = { version = "2.4.2" }
