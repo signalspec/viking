@@ -12,7 +12,9 @@ use descriptor::Resources;
 use log::debug;
 use nusb::{
     Endpoint,
-    transfer::{Bulk, ControlIn, ControlOut, ControlType, In, Out, Recipient, TransferError},
+    transfer::{
+        Buffer, Bulk, ControlIn, ControlOut, ControlType, In, Out, Recipient, TransferError,
+    },
 };
 use thiserror::Error;
 
@@ -312,46 +314,44 @@ impl<'a> CommandBatch<'a> {
         let seq = lock.next_seq();
         self.req[0] = seq;
 
-        let mut t_out = lock.ep_req.allocate(self.req.len());
-        t_out.extend_from_slice(&self.req);
         let zlp = self.req.len() % lock.ep_req.max_packet_size() == 0;
         debug!("Send batch {:x?}", self.req);
-        lock.ep_req.submit(t_out);
+        lock.ep_req.submit(Buffer::from(self.req));
 
         if zlp {
-            let t_zlp = lock.ep_req.allocate(0);
-            lock.ep_req.submit(t_zlp);
+            lock.ep_req.submit(Buffer::new(0));
         }
 
         lock.ep_req
             .next_complete()
             .await
-            .status()
+            .status
             .map_err(RequestError::Usb)?;
         if zlp {
             lock.ep_req
                 .next_complete()
                 .await
-                .status()
+                .status
                 .map_err(RequestError::Usb)?;
         }
 
-        let r = lock.ep_res.allocate(4096);
-        lock.ep_res.submit(r);
+        lock.ep_res.submit(Buffer::new(4096));
         let res = lock.ep_res.next_complete().await;
         debug!("Response {res:x?}");
-        res.status().map_err(RequestError::Usb)?;
+        res.status.map_err(RequestError::Usb)?;
 
-        if res.len() < 2 {
+        if res.buffer.len() < 2 {
             Err(RequestError::Protocol(
                 "response packet too short for header",
             ))
-        } else if res[0] != seq {
+        } else if res.buffer[0] != seq {
             Err(RequestError::Protocol("response sequence mismatch"))
-        } else if res[1] != 0 {
+        } else if res.buffer[1] != 0 {
             Err(RequestError::Protocol("device returned error status"))
         } else {
-            Ok(ResponseBatch { res: res.to_vec() })
+            Ok(ResponseBatch {
+                res: res.buffer.into_vec(),
+            })
         }
     }
 }

@@ -4,6 +4,8 @@ use viking_io::{Interface, led::Led};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::init();
+
     let dev = Interface::find(0x59e3, 0x2222).await?;
 
     let led = dev.resource("led")?.as_mode::<Led>()?.enable().await?;
