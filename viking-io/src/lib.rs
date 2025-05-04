@@ -7,7 +7,6 @@ use std::{
     time::Duration,
 };
 
-use command::VarInt;
 use descriptor::Resources;
 use log::debug;
 use nusb::{
@@ -259,8 +258,8 @@ impl Interface {
     }
 }
 
-fn cmd_delay(us: u32) -> Command<VarInt, ()> {
-    Command::new(0, viking_protocol::protocol::cmd::DELAY, VarInt(us), ())
+fn cmd_delay(us: u16) -> Command<u16, ()> {
+    Command::new(0, viking_protocol::protocol::cmd::DELAY, us, ())
 }
 
 pub struct CommandBatch<'a> {

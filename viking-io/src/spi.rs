@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, u16};
 
 use crate::{
     RequestError, Resource, cmd_delay,
@@ -146,7 +146,9 @@ impl<C: AsRef<Controller>> embedded_hal_async::spi::SpiDevice for Device<C> {
         for op in operations.into_iter() {
             match op {
                 embedded_hal_async::spi::Operation::DelayNs(ns) => {
-                    queue.push(cmd_delay(ns.div_ceil(1000))).await;
+                    queue
+                        .push(cmd_delay(ns.div_ceil(1000).try_into().unwrap_or(u16::MAX)))
+                        .await;
                 }
 
                 embedded_hal_async::spi::Operation::Read(buf) => {

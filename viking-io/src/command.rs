@@ -1,4 +1,4 @@
-use std::{array, marker::PhantomData};
+use std::marker::PhantomData;
 
 pub trait ResponsePattern: Clone {
     type Output<'a>;
@@ -94,40 +94,16 @@ impl PayloadPattern for u8 {
     }
 }
 
+impl PayloadPattern for u16 {
+    fn bytes(&self) -> impl Iterator<Item = u8> {
+        self.to_le_bytes().into_iter()
+    }
+}
+
 impl PayloadPattern for () {
     fn bytes(&self) -> impl Iterator<Item = u8> {
         [].into_iter()
     }
-}
-
-pub struct VarInt(pub u32);
-
-impl PayloadPattern for VarInt {
-    fn bytes(&self) -> impl Iterator<Item = u8> {
-        let mut bytes: [u8; 5] = array::from_fn(|i| ((self.0 >> i * 7) | 0x80) as u8);
-        bytes[0] &= 0x7f;
-        bytes.into_iter().rev().skip_while(|x| x == &0x80)
-    }
-}
-
-#[test]
-fn test_var_int() {
-    assert_eq!(VarInt(0).bytes().collect::<Vec<u8>>(), vec![0]);
-    assert_eq!(VarInt(127).bytes().collect::<Vec<u8>>(), vec![0x7F]);
-    assert_eq!(VarInt(128).bytes().collect::<Vec<u8>>(), vec![0x81, 0x00]);
-    assert_eq!(VarInt(16383).bytes().collect::<Vec<u8>>(), vec![0xFF, 0x7F]);
-    assert_eq!(
-        VarInt(16384).bytes().collect::<Vec<u8>>(),
-        vec![0x81, 0x80, 0x00]
-    );
-    assert_eq!(
-        VarInt(268435455).bytes().collect::<Vec<u8>>(),
-        vec![0xff, 0xff, 0xff, 0x7f]
-    );
-    assert_eq!(
-        VarInt(4294967295).bytes().collect::<Vec<u8>>(),
-        vec![0x8f, 0xff, 0xff, 0xff, 0x7f]
-    );
 }
 
 impl PayloadPattern for &[u8] {
