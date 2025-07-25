@@ -10,7 +10,7 @@ async-lock = "3.4.0"
 embedded-hal-async = "1.0.0"
 futures-lite = "2.3.0"
 log = "0.4.22"
-nusb = "=0.2.0-beta.1"
+nusb = { version = "0.2.0", features = ["smol"] }
 thiserror = "2.0.12"
 viking-protocol = { path = "../viking-protocol" }
 zerocopy = "0.8"
