@@ -239,11 +239,11 @@ impl Interface {
             .map_err(|e| Error::new("configure mode failed", e))?)
     }
 
-    pub fn batch(self: &Arc<Self>) -> CommandBatch {
+    pub fn batch(self: &Arc<Self>) -> CommandBatch<'_> {
         CommandBatch::new(self)
     }
 
-    pub fn queue(self: &Arc<Self>) -> CommandQueue {
+    pub fn queue(self: &Arc<Self>) -> CommandQueue<'_> {
         CommandQueue::new(self)
     }
 
