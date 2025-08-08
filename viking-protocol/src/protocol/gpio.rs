@@ -18,4 +18,9 @@ pub mod level_interrupt {
         pub const EVT_LOW: u8 = 2;
         pub const EVT_HIGH: u8 = 3;
     }
+
+    pub mod evt {
+        pub const LOW: u8 = 0;
+        pub const HIGH: u8 = 1;
+    }
 }
