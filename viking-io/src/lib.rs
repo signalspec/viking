@@ -313,13 +313,23 @@ impl<'a> CommandBatch<'a> {
         let seq = lock.next_seq();
         self.req[0] = seq;
 
+        while lock.ep_req.pending() > 0 {
+            lock.ep_req.next_complete().await.status.map_err(RequestError::Usb)?;
+            debug!("Ignored stale OUT transfer");
+        }
+
+        while lock.ep_res.pending() > 0 {
+            lock.ep_res.next_complete().await.status.map_err(RequestError::Usb)?;
+            debug!("Ignored stale IN transfer");
+        }
+
         let zlp = self.req.len() % lock.ep_req.max_packet_size() == 0;
         debug!("Send batch {:x?}", self.req);
         lock.ep_req.submit(Buffer::from(self.req));
-
         if zlp {
             lock.ep_req.submit(Buffer::new(0));
         }
+        lock.ep_res.submit(Buffer::new(4096));
 
         lock.ep_req
             .next_complete()
@@ -334,7 +344,6 @@ impl<'a> CommandBatch<'a> {
                 .map_err(RequestError::Usb)?;
         }
 
-        lock.ep_res.submit(Buffer::new(4096));
         let res = lock.ep_res.next_complete().await;
         debug!("Response {res:x?}");
         res.status.map_err(RequestError::Usb)?;
