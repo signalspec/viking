@@ -86,6 +86,12 @@ impl CmdShared {
 
 #[derive(Debug, Error)]
 pub enum RequestError {
+    #[error("skipped due to prior error")]
+    PriorError,
+
+    #[error("status {0:02X}")]
+    Status(u8),
+
     #[error("{0}")]
     Protocol(&'static str),
 
@@ -254,7 +260,12 @@ impl Interface {
         let mut batch = self.batch();
         let h = batch.push(cmd);
         let res = batch.run().await?;
-        Ok(h.res.static_output(&res.res[2..]))
+        let status = *res.res.get(2).ok_or(RequestError::Protocol("no status byte for first command"))?;
+        if status < viking_protocol::errors::MIN_ERR {
+            Ok(h.res.static_output(status, &res.res[3..]))
+        } else {
+            Err(RequestError::Status(status))
+        }
     }
 }
 
@@ -290,7 +301,7 @@ impl<'a> CommandBatch<'a> {
 
     pub fn can_fit<P: PayloadPattern, R: ResponsePattern>(&mut self, cmd: &Command<P, R>) -> bool {
         self.req.len() + 1 + cmd.payload.len() <= self.intf.max_command_len
-            && self.response_len + cmd.response.len() <= self.intf.max_response_len
+            && self.response_len + 1 + cmd.response.len() <= self.intf.max_response_len
     }
 
     pub fn push<P: PayloadPattern, R: ResponsePattern>(
@@ -303,8 +314,7 @@ impl<'a> CommandBatch<'a> {
             self.req.extend_from_slice(&[b]);
         }
         let res = cmd.response();
-        let len = res.len();
-        self.response_len += len;
+        self.response_len += 1 + res.len();
         ResponseHandle { res, offset }
     }
 
@@ -368,23 +378,45 @@ impl ResponseBatch {
     pub fn get<'a, R: ResponsePattern>(
         &'a self,
         h: ResponseHandle<R>,
-    ) -> Result<R::Output<'a>, ()> {
-        let slice = self.res.get(2 + h.offset..2 + h.offset + h.res.len());
-        slice.map(|s| h.res.output(s)).ok_or(())
+    ) -> Result<R::Output<'a>, RequestError> {
+        let status = self.get_status(h.offset)?;
+        let response = self.get_response(h.offset, h.res.len()).ok_or(RequestError::Protocol("incomplete response to command"))?;
+        Ok(h.res.output(status, response))
+    }
+
+    fn get_status(&self, offset: usize) -> Result<u8, RequestError> {
+        let status = self.res.get(2 + offset).copied().ok_or(RequestError::PriorError)?;
+        if status > viking_protocol::errors::MIN_ERR {
+            Err(RequestError::Status(status))
+        } else {
+            Ok(status)
+        }
+    }
+
+    fn get_response(&self, offset: usize, len: usize) -> Option<&[u8]> {
+        self.res.get((2 + offset + 1)..(2 + offset + 1 + len))
     }
 }
 
 pub struct CommandQueue<'a> {
     batch: CommandBatch<'a>,
-    reads: Vec<(ResponseHandle<command::SliceResponse>, &'a mut [u8])>,
+
+    /// Position of status byte of each command, and the buffer to write the response to.
+    responses: Vec<(usize, &'a mut [u8])>,
     error: Result<(), RequestError>,
+}
+
+fn set_err<T, E>(res: &mut Result<T, E>, err: E) {
+    if res.is_ok() {
+        *res = Err(err);
+    }
 }
 
 impl<'a> CommandQueue<'a> {
     fn new(intf: &'a Arc<Interface>) -> Self {
         Self {
             batch: intf.batch(),
-            reads: Vec::new(),
+            responses: Vec::new(),
             error: Ok(()),
         }
     }
@@ -394,11 +426,20 @@ impl<'a> CommandQueue<'a> {
         let batch = replace(&mut self.batch, next_batch);
         match batch.run().await {
             Ok(res) => {
-                for (h, dest) in self.reads.drain(..) {
-                    dest.copy_from_slice(res.get(h).unwrap());
+                for (offset, dest) in self.responses.drain(..) {
+                    match res.get_status(offset) {
+                        Ok(_) => {
+                            let Some(response) = res.get_response(offset, dest.len()) else {
+                                set_err(&mut self.error, RequestError::Protocol("incomplete response to command"));
+                                break;
+                            };
+                            dest.copy_from_slice(response);
+                        }
+                        Err(e) => set_err(&mut self.error, e),
+                    }
                 }
             }
-            Err(err) => self.error = Err(err),
+            Err(e) => set_err(&mut self.error, e),
         }
     }
 
@@ -409,7 +450,8 @@ impl<'a> CommandQueue<'a> {
         if !self.batch.can_fit(&cmd) {
             self.flush().await;
         }
-        self.batch.push(cmd);
+        let h = self.batch.push(cmd);
+        self.responses.push((h.offset, &mut []));
     }
 
     pub async fn push_read<P: PayloadPattern>(
@@ -424,7 +466,8 @@ impl<'a> CommandQueue<'a> {
             self.flush().await;
         }
         let h = self.batch.push(cmd);
-        self.reads.push((h, dest));
+        let len = dest.len().min(h.res.len());
+        self.responses.push((h.offset, &mut dest[..len]))
     }
 
     pub async fn push_read_in_place(
@@ -440,7 +483,8 @@ impl<'a> CommandQueue<'a> {
             self.flush().await;
         }
         let h = self.batch.push(cmd);
-        self.reads.push((h, buf));
+        let len = buf.len().min(h.res.len());
+        self.responses.push((h.offset, &mut buf[..len]));
     }
 
     pub async fn finish(mut self) -> Result<(), RequestError> {

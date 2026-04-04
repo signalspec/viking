@@ -4,6 +4,7 @@ use crate::{
     resource_mode,
 };
 use embedded_hal_async::i2c::Operation;
+use nusb::transfer::TransferError;
 use thiserror::Error;
 use viking_protocol::protocol::i2c::{controller, scl, sda};
 
@@ -14,12 +15,12 @@ pub struct Controller {
 resource_mode!(Controller, ControllerBuilder, controller::PROTOCOL);
 
 impl Controller {
-    pub fn cmd_start(&self, addr: u8) -> Command<u8, ScalarResponse<u8>> {
+    pub fn cmd_start(&self, addr: u8) -> Command<u8, ()> {
         Command::new(
             self.resource.id,
             controller::cmd::START,
             addr,
-            ScalarResponse::new(),
+            (),
         )
     }
 
@@ -43,17 +44,62 @@ impl Controller {
 
 #[derive(Debug, Error)]
 #[error("i2c error")]
-pub struct Error;
+pub enum Error {
+    #[error("skipped due to prior error")]
+    PriorError,
+
+    #[error("unexpected response status {0:02X}")]
+    Status(u8),
+
+    #[error("{0}")]
+    Protocol(&'static str),
+
+    #[error("{0}")]
+    Usb(#[from] TransferError),
+
+    #[error("address not acknowledged")]
+    AddrNack,
+
+    #[error("data not acknowledged")]
+    DataNack,
+
+    #[error("arbitration lost")]
+    ArbitrationLoss,
+
+    #[error("timeout")]
+    Timeout,
+
+    #[error("unsuported command sequence")]
+    Unsupported
+}
 
 impl embedded_hal_async::i2c::Error for Error {
     fn kind(&self) -> embedded_hal_async::i2c::ErrorKind {
-        todo!()
+        use embedded_hal_async::i2c::{ErrorKind, NoAcknowledgeSource};
+
+        match self {
+            Error::AddrNack => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Address),
+            Error::DataNack => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Data),
+            Error::ArbitrationLoss => ErrorKind::ArbitrationLoss,
+            _ => ErrorKind::Other,
+        }
     }
 }
 
 impl From<RequestError> for Error {
-    fn from(_value: RequestError) -> Self {
-        Error
+    fn from(v: RequestError) -> Self {
+        use viking_protocol::errors;
+        match v {
+            RequestError::PriorError => Self::PriorError,
+            RequestError::Protocol(msg) => Self::Protocol(msg),
+            RequestError::Usb(e) => Self::Usb(e),
+            RequestError::Status(errors::ERR_ADDR_NACK) => Self::AddrNack,
+            RequestError::Status(errors::ERR_DATA_NACK) => Self::DataNack,
+            RequestError::Status(errors::ERR_ARBITRATION_LOST) => Self::ArbitrationLoss,
+            RequestError::Status(errors::ERR_TIMEOUT) => Self::Timeout,
+            RequestError::Status(errors::ERR_INVALID_STATE | errors::ERR_INVALID_ARG) => Self::Unsupported,
+            RequestError::Status(status) => Self::Status(status),
+        }
     }
 }
 

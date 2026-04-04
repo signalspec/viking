@@ -1,6 +1,6 @@
 use crate::{
     RequestError, Resource,
-    command::{Command, ScalarResponse},
+    command::{Command, StatusResponse},
     resource_mode,
 };
 use viking_protocol::protocol::gpio::pin as protocol;
@@ -24,12 +24,12 @@ impl Gpio {
         self.resource.interface.run(self.cmd_float()).await
     }
 
-    pub fn cmd_read(&self) -> Command<(), ScalarResponse<u8>> {
+    pub fn cmd_read(&self) -> Command<(), StatusResponse> {
         Command::new(
             self.resource.id,
             protocol::cmd::READ,
             (),
-            ScalarResponse::new(),
+            StatusResponse,
         )
     }
 

@@ -10,12 +10,13 @@ pub mod controller {
         pub struct ModeFlags: u16 {
             const PINS = 1 << 0;
             const CLOCK_STRETCH = 1 << 1;
-            const BYTE_AT_A_TIME = 1 << 2;
+            const SPLIT = 1 << 2;
             const WRITE_THEN_READ = 1 << 3;
             const REPEATED_START_SAME_ADDRESS = 1 << 4;
             const REPEATED_START = 1 << 5;
             const ZERO_LEN_WRITE = 1 << 6;
-            const ZERO_LEN_READ = 1 << 7;
+            const ADDR_NACK = 1 << 7;
+            const PRECISE_NACK = 1 << 8;
         }
     }
 
@@ -57,7 +58,15 @@ pub mod controller {
     #[derive(IntoBytes, FromBytes, Unaligned)]
     #[repr(C)]
     pub struct Config {
-        speed: u8,
+        pub speed: u8,
+    }
+
+    impl Default for Config {
+        fn default() -> Self {
+            Self {
+                speed: speed::STANDARD,
+            }
+        }
     }
 
     pub mod cmd {

@@ -4,7 +4,7 @@ Viking is a USB protocol for controlling the peripherals and IO pins of a microc
 
 A Viking device exposes up to 63 resources such as IO pins or peripheral blocks. Each resource defines one or more modes, which implement protocols defined in this specification abstracting common microcontroller peripherals such as GPIO, SPI, I2C, and timers. When a resource is configured for a mode, it can execute commands and emit events defined by the mode's protocol. Viking is intended to be extensible to a wide variety of microcontrollers and boards and is self-describing: the device returns a descriptor listing resources and their supported modes.
 
-A protocol defines a set of commands that can be encoded in as little as a single byte. The Command endpoint accepts a batch of commands which are executed sequentially. Commands that return data produce a response transmitted on the Response endpoint. A separate Event endpoint returns asynchronous events for input that is not directly related to a command.
+A protocol defines a set of commands that can be encoded in as little as a single byte. The Command endpoint accepts a batch of commands which are executed sequentially, producing a response batch on the Response endpoint.A separate Event endpoint returns asynchronous events for input that is not directly related to a command.
 
 ## USB Descriptors
 
@@ -130,13 +130,15 @@ Interrupts execution of the running command batch.
 
 Once the resource modes are configured, the host can use the resources by sending a batch of commands to the device on the `CMD` bulk endpoint. The commands are executed sequentially with their timing not reliant on the host, and return their responses as a batch on the `RES` bulk endpoint.
 
-The first byte of a command batch is a sequence number echoed in the response. The second byte is reserved, send 0. The remainder of the payload is a series of commands. The batch is terminated by a USB packet shorter than the endpoint's max packet size (`bMaxPacket`), or a zero-length packet if the data is a multiple of the USB max packet size.
+The first byte of a command batch is a sequence number echoed in the response. The second byte is reserved, send 0. The remainder of the payload is a series of commands.
 
 Commands begin with a command byte. The low 6 bits are the resource ID, and the 2 high bits are a command number. The command number is interpreted based on the protocol of the current mode of the specified resource. A command may have subsequent bytes of sub-commands or data as defined by the protocol.
 
 The encoding space for resource 0 is used for special commands listed below.
 
-The first byte of the response batch is the sequence number from the command batch, and the second byte is 0 for success or a non-zero error code if an error was encountered executing the commands. The remainder of the response is the concatenated responses of each command. There are no command bytes or delimiters in the response; the host must keep track of the offset and length in the response buffer corresponding to each command.
+The batch is terminated by a USB packet shorter than the endpoint's max packet size (`bMaxPacket`), or a zero-length packet if the data is a multiple of the USB max packet size. The top-level Viking descriptor specifies the maximum supported size of the request and response batch and the host must build batches that respect both limits. Individual commands may not be split across batch boundaries, but resource state is retained across batches.
+
+The first byte of the response batch is the sequence number from the command batch, and the second byte is reserved. The remainder of the response is the concatenated responses of each command. Each command executed produces a status byte, where a value < 0x80 indicates success, and a value >= 0x80 indicates an error. Most errors stop execution of the batch, but some are non-fatal. The status byte may be followed by additional response data depending on the command. There are no command delimiters in the response; the host must keep track of the offset and length in the response buffer corresponding to each command.
 
 ### Special command 0: DELAY
 
@@ -184,4 +186,3 @@ Examples of planned or potential protocols:
  * GPIO - multi-pin bank
  * Register Block
  * RP2040/RP2350 PIO
-

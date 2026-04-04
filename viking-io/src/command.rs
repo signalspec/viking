@@ -3,12 +3,36 @@ use std::marker::PhantomData;
 pub trait ResponsePattern: Clone {
     type Output<'a>;
     fn len(&self) -> usize;
-    fn output<'a>(&self, buf: &'a [u8]) -> Self::Output<'a>;
+    fn output<'a>(&self, status: u8, buf: &'a [u8]) -> Self::Output<'a>;
 }
 
 pub trait StaticResponsePattern: ResponsePattern {
     type StaticOutput;
-    fn static_output(&self, buf: &[u8]) -> Self::StaticOutput;
+    fn static_output(&self, status: u8, buf: &[u8]) -> Self::StaticOutput;
+}
+
+/// A response that returns the data from the successful values of the status byte.
+#[derive(Clone)]
+pub struct StatusResponse;
+
+impl ResponsePattern for StatusResponse {
+    type Output<'a> = u8;
+
+    fn output(&self, status: u8, _buf: &[u8]) -> u8 {
+        status
+    }
+
+    fn len(&self) -> usize {
+        0
+    }
+}
+
+impl StaticResponsePattern for StatusResponse {
+    type StaticOutput = u8;
+
+    fn static_output(&self, status: u8, buf: &[u8]) -> u8 {
+        self.output(status, buf)
+    }
 }
 
 #[derive(Clone)]
@@ -23,7 +47,7 @@ impl<T> ScalarResponse<T> {
 impl ResponsePattern for ScalarResponse<u8> {
     type Output<'a> = u8;
 
-    fn output(&self, buf: &[u8]) -> u8 {
+    fn output(&self, _status: u8, buf: &[u8]) -> u8 {
         buf[0]
     }
 
@@ -35,15 +59,15 @@ impl ResponsePattern for ScalarResponse<u8> {
 impl StaticResponsePattern for ScalarResponse<u8> {
     type StaticOutput = u8;
 
-    fn static_output(&self, buf: &[u8]) -> u8 {
-        buf[0]
+    fn static_output(&self, status: u8, buf: &[u8]) -> u8 {
+        self.output(status, buf)
     }
 }
 
 impl ResponsePattern for () {
     type Output<'a> = ();
 
-    fn output(&self, _buf: &[u8]) -> () {
+    fn output(&self, _status: u8, _buf: &[u8]) -> () {
         ()
     }
 
@@ -55,8 +79,8 @@ impl ResponsePattern for () {
 impl StaticResponsePattern for () {
     type StaticOutput = ();
 
-    fn static_output(&self, _buf: &[u8]) -> () {
-        ()
+    fn static_output(&self, status: u8, buf: &[u8]) -> () {
+        self.output(status, buf)
     }
 }
 
@@ -72,7 +96,7 @@ impl SliceResponse {
 impl ResponsePattern for SliceResponse {
     type Output<'a> = &'a [u8];
 
-    fn output<'a>(&self, buf: &'a [u8]) -> &'a [u8] {
+    fn output<'a>(&self, _status: u8, buf: &'a [u8]) -> &'a [u8] {
         &buf[..self.0]
     }
 
