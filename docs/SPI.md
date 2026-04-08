@@ -10,12 +10,12 @@ Field       | Type | Description
 ------------|------|-------------
 flags       | u32  | see below
 base_clock  | u32  | base clock in Hz
+max_div     | u32  | maximum clock divider
 
 
 Flag bit | Name        | Description
 ---------|-------------|-------------
 0        | PINS        | `0` - fixed pinout is enabled automatically<br/>`1` - pin resources must be configured to the `SPI_SCK`, `SPI_SDO`, and `SPI_SDI` modes for use with this controller.
-1        | SPEED       | `1` - Speed is configurable
 2        | MODE0       | `1` - Mode 0 (CPOL=0, CPHA=0) is supported
 3        | MODE1       | `1` - Mode 1 (CPOL=0, CPHA=1) is supported
 4        | MODE2       | `1` - Mode 2 (CPOL=1, CPHA=0) is supported
@@ -28,7 +28,7 @@ Flag bit | Name        | Description
 Field         | Type | Description
 --------------|------|-------------
 flags         | u32  | See below. Specified values must be supported in capability flags.
-speed         | u32  | Desired speed in Hz. May be rounded down by the firmware.
+clock_div     | u32  | Clock divider from base clock.
 
 Flag bit  | Name        | Description
 ----------|-------------|-------------
