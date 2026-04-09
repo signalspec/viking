@@ -15,6 +15,24 @@ pub struct Controller {
 resource_mode!(Controller, ControllerBuilder, controller::PROTOCOL);
 
 impl Controller {
+    pub fn cmd_read<'a>(&self, len: u8) -> Command<u8, SliceResponse> {
+        Command::new(
+            self.resource.id,
+            controller::cmd::READ,
+            len,
+            SliceResponse::new(len as usize),
+        )
+    }
+
+    pub fn cmd_write<'a>(&self, tx: &'a [u8]) -> Command<&'a [u8], ()> {
+        Command::new(
+            self.resource.id,
+            controller::cmd::WRITE,
+            tx,
+            (),
+        )
+    }
+
     pub fn cmd_transfer<'a>(&self, tx: &'a [u8]) -> Command<&'a [u8], SliceResponse> {
         Command::new(
             self.resource.id,
@@ -47,10 +65,9 @@ impl embedded_hal_async::spi::ErrorType for Controller {
 impl embedded_hal_async::spi::SpiBus for Controller {
     async fn read(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
         let mut queue = self.resource.interface.queue();
-        let zeros = [0; 255];
         for dest in words.chunks_mut(255) {
             queue
-                .push_read(self.cmd_transfer(&zeros[..dest.len()]), dest)
+                .push_read(self.cmd_read(dest.len() as u8), dest)
                 .await;
         }
         Ok(queue.finish().await?)
@@ -59,7 +76,7 @@ impl embedded_hal_async::spi::SpiBus for Controller {
     async fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
         let mut queue = self.resource.interface.queue();
         for src in words.chunks(255) {
-            queue.push(self.cmd_transfer(src)).await;
+            queue.push(self.cmd_write(src)).await;
         }
         Ok(queue.finish().await?)
     }
