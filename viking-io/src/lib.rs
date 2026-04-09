@@ -269,7 +269,7 @@ impl Interface {
     }
 }
 
-fn cmd_delay(us: u16) -> Command<u16, ()> {
+pub fn cmd_delay(us: u16) -> Command<u16, ()> {
     Command::new(0, viking_protocol::protocol::cmd::DELAY, us, ())
 }
 
