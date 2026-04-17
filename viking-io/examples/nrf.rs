@@ -17,6 +17,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .await?,
     );
     let cs = intf.resource("cs")?.as_mode::<Gpio>()?.enable().await?;
+    cs.high().await?;
     let ce = intf.resource("ce")?.as_mode::<Gpio>()?.enable().await?;
 
     const CONFIG: u8 = 0x00;
