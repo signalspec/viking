@@ -8,7 +8,7 @@ use embedded_hal_async::spi::{Operation, SpiDevice};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
-    let intf = block_on(viking_io::Interface::find(0x59e3, 0x2222))?;
+    let intf = block_on(viking_io::Interface::find((), None))?;
 
     let spi = Arc::new(
         intf.resource("spi")?

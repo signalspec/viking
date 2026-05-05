@@ -7,7 +7,19 @@ use viking_io::{Interface, i2c};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
-    let dev = Interface::find(0x59e3, 0x2222).await?;
+    let dev = Interface::find((), None).await?;
+
+    let _sda = dev
+        .resource("gp4")?
+        .as_mode::<i2c::Sda>()?
+        .enable()
+        .await?;
+
+    let _scl = dev
+        .resource("gp5")?
+        .as_mode::<i2c::Scl>()?
+        .enable()
+        .await?;
 
     let mut i2c = dev
         .resource("i2c")?

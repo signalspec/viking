@@ -24,7 +24,9 @@ pub mod gpio;
 pub mod i2c;
 pub mod led;
 pub mod spi;
+mod device;
 
+pub use device::{list_devices, DeviceMatcher, FoundDevice};
 use self::command::{Command, PayloadPattern, ResponsePattern, StaticResponsePattern};
 
 #[derive(Debug)]
@@ -100,33 +102,15 @@ pub enum RequestError {
 }
 
 impl Interface {
-    pub async fn find(vid: u16, pid: u16) -> Result<Arc<Self>, Error> {
-        let dev = nusb::list_devices()
-            .await
-            .map_err(|e| Error::new("couldn't list devices", e))?
-            .find(|d| d.vendor_id() == vid && d.product_id() == pid)
-            .ok_or_else(|| Error::from("device not found"))?;
-
-        let dev = dev
-            .open()
-            .await
-            .map_err(|e| Error::new("couldn't open device", e))?;
-
-        let desc = dev
-            .active_configuration()
-            .map_err(|e| Error::new("couldn't get active configuration", e))?;
-
-        let intf_desc = desc
-            .interface_alt_settings()
-            .find(|intf| intf.class() == 0xff && intf.subclass() == 0x00 && intf.protocol() == 0x00)
-            .ok_or_else(|| Error::from("no Viking interface found on device"))?;
-
-        let intf_handle = dev
-            .claim_interface(intf_desc.interface_number())
-            .await
-            .map_err(|e| Error::new("couldn't claim interface", e))?;
-
-        Self::from_nusb(intf_handle).await
+    pub async fn find(matcher: impl DeviceMatcher, serial: Option<&str>) -> Result<Arc<Self>, Error> {
+        let devices = list_devices(matcher, serial).await?;
+        if devices.is_empty() {
+            Err(Error::from("no matching devices found"))
+        } else if devices.len() > 1 {
+            Err(Error::from("multiple matching devices found"))
+        } else {
+            devices[0].open().await
+        }
     }
 
     pub async fn from_nusb(intf: nusb::Interface) -> Result<Arc<Self>, Error> {
